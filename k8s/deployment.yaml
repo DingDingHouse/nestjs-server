@@ -18,8 +18,10 @@ spec:
         ports:
         - containerPort: 3000
         env:
-        - name: MONGO_URL
-          value: "mongodb://mongodb-service:27017/nestdb"
+        - name: MONGODB_URI
+          value: "mongodb+srv://gauravkr:7272547272@cluster0.vquyc.mongodb.net"
+        - name: PORT
+          value: "5001"
 ---
 apiVersion: v1
 kind: Service
