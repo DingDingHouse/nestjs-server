@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: nestjs-app
-        image: prathm0025/nestjs-app:latest  # This will be replaced dynamically
+        image: prathm0025/nestjs-app:pr-1  # This will be replaced dynamically
         ports:
         - containerPort: 3000
         env:
