@@ -16,7 +16,7 @@ spec:
       - name: nestjs-app
         image: prathm0025/nestjs-app:pr-1  # This will be replaced dynamically
         ports:
-        - containerPort: 3000
+        - containerPort: 5001
         env:
         - name: MONGODB_URI
           value: "mongodb+srv://gauravkr:7272547272@cluster0.vquyc.mongodb.net"
@@ -33,5 +33,5 @@ spec:
     app: nestjs-app
   ports:
     - protocol: TCP
-      port: 3000
-      targetPort: 3000
+      port: 5001
+      targetPort: 5001
