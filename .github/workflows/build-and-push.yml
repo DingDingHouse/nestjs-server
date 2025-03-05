@@ -59,3 +59,5 @@ jobs:
         run: |
           kubectl rollout status deployment/nestjs-app
           echo "Deployment completed with image: ${{ secrets.DOCKERHUB_USERNAME }}/nestjs-app:pr-${{ env.PR_NUMBER }}"
+
+          
