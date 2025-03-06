@@ -19,7 +19,7 @@ spec:
         - containerPort: 5001
         env:
         - name: MONGODB_URI
-          value: "mongodb+srv://trippyrahul:GyN2SAGywSl1GPPg@milkyway.3j9xfzm.mongodb.net"
+          value: ""
         - name: PORT
           value: "5001"
 ---
