@@ -42,4 +42,20 @@ export class RoleRepository extends AbstractRepository<Role> {
 
     return role;
   }
+
+  async findOneAndUpdate(
+    filter: Partial<Role>,
+    update: Partial<Role>,
+    options?: SaveOptions,
+  ): Promise<Role | null> {
+    const isPlayer = update.name === ROLE_NAMES.PLAYER;
+    const hasDescendants =
+      Array.isArray(update.descendants) && update.descendants.length > 0;
+
+    if (isPlayer && hasDescendants) {
+      throw new Error('The "player" role cannot have any descendants.');
+    }
+
+    return super.findOneAndUpdate(filter, update, options);
+  }
 }

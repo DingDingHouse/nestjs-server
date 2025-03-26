@@ -61,6 +61,7 @@ export abstract class AbstractRepository<TDocument extends AbstractDocument> {
       .exec();
   }
 
+  // TODO: we should also ensure that unique uniqueness even after deleted
   async deleteOne(filterQuery: Partial<TDocument>): Promise<void> {
     const doc = await this.model
       .findOne(this.filterNotDeleted(filterQuery))
