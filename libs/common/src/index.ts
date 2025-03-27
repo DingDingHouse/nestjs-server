@@ -5,6 +5,10 @@ export * from './database/schemas/user.schema';
 export * from './database/repositories/user.repository';
 export * from './database/schemas/role.schema';
 export * from './database/repositories/role.repository';
+export * from './constants/roles';
+export * from './constants/status';
+export * from './dto/pagination-result.dto';
+export * from './pipes/parse-object-id.pipe';
 
 // nestjs-server/
 // ├── libs/

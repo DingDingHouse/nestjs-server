@@ -1,8 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { AbstractDocument } from '../abstract.schema';
 import { Types } from 'mongoose';
-import { ROLE_NAMES } from '@app/common/constants/roles';
 import { ROLE_STATUS } from '@app/common/constants/status';
+import { ROLE_NAMES } from '@app/common/constants/roles';
 
 @Schema({ timestamps: true })
 export class Role extends AbstractDocument {
@@ -14,6 +14,9 @@ export class Role extends AbstractDocument {
 
   @Prop({ enum: Object.values(ROLE_STATUS), default: ROLE_STATUS.ACTIVE })
   status: string;
+
+  @Prop({ type: Date, default: null })
+  deletedAt?: Date | null;
 }
 
 export const RoleSchema = SchemaFactory.createForClass(Role);

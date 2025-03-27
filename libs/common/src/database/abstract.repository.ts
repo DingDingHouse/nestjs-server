@@ -1,22 +1,32 @@
 import { Logger } from '@nestjs/common';
-import { Model, Types, SaveOptions, Connection } from 'mongoose';
+import {
+  Model,
+  Types,
+  SaveOptions,
+  Connection,
+  FilterQuery,
+  UpdateQuery,
+} from 'mongoose';
 import { AbstractDocument } from './abstract.schema';
+import { PaginatedResult } from '../dto/pagination-result.dto';
+import { Lean } from '../types/lean-document';
 
 export abstract class AbstractRepository<TDocument extends AbstractDocument> {
   protected abstract readonly logger: Logger;
+  protected abstract readonly deletedStatusValue: string;
+  protected readonly statusField: string = 'status';
+  protected readonly deletedAtField: string = 'deletedAt';
 
   constructor(
     protected readonly model: Model<TDocument>,
     private readonly connection: Connection,
   ) {}
 
-  private filterNotDeleted(filterQuery: Partial<TDocument> = {}) {
+  private getSoftDeleteFilter(): FilterQuery<TDocument> {
     return {
-      ...filterQuery,
-      status: { $ne: 'deleted' },
-    };
+      [this.statusField]: { $ne: this.deletedStatusValue },
+    } as FilterQuery<TDocument>;
   }
-
   async create(
     document: Omit<TDocument, '_id'>,
     options?: SaveOptions,
@@ -30,62 +40,114 @@ export abstract class AbstractRepository<TDocument extends AbstractDocument> {
     ).toJSON() as unknown as TDocument;
   }
 
-  async findOne(filterQuery: Partial<TDocument>): Promise<TDocument | null> {
-    return this.model.findOne(this.filterNotDeleted(filterQuery)).exec();
-  }
-
-  async find(filterQuery: Partial<TDocument> = {}): Promise<TDocument[]> {
-    return this.model.find(this.filterNotDeleted(filterQuery)).exec();
-  }
-
-  async findById(id: string): Promise<TDocument | null> {
+  async findOne(
+    filterQuery: FilterQuery<TDocument>,
+  ): Promise<TDocument | null> {
     return this.model
-      .findOne(
-        this.filterNotDeleted({
-          _id: new Types.ObjectId(id),
-        } as Partial<TDocument>),
-      )
+      .findOne({ ...filterQuery, ...this.getSoftDeleteFilter() })
       .exec();
   }
 
+  async find(filterQuery: FilterQuery<TDocument> = {}): Promise<TDocument[]> {
+    return this.model
+      .find({ ...filterQuery, ...this.getSoftDeleteFilter() })
+      .exec();
+  }
+
+  async findById(id: Types.ObjectId): Promise<TDocument | null> {
+    return this.model
+      .findOne({ _id: id, ...this.getSoftDeleteFilter() })
+      .exec();
+  }
+
+  async findAdvanced({
+    filter = {},
+    page = 1,
+    limit = 10,
+    sort = {},
+  }: {
+    filter?: FilterQuery<TDocument>;
+    page?: number;
+    limit?: number;
+    sort?: Record<string, 1 | -1>;
+  }): Promise<PaginatedResult<Lean<TDocument>>> {
+    const skip = (page - 1) * limit;
+
+    const finalFilter = {
+      ...filter,
+      ...this.getSoftDeleteFilter(),
+    };
+
+    const [data, total] = await Promise.all([
+      this.model
+        .find(finalFilter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.model.countDocuments(finalFilter),
+    ]);
+
+    return {
+      data: data as Lean<TDocument>[],
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
   async findOneAndUpdate(
-    filterQuery: Partial<TDocument>,
+    filterQuery: FilterQuery<TDocument>,
     update: Partial<TDocument>,
     options?: SaveOptions,
   ): Promise<TDocument | null> {
     return this.model
-      .findOneAndUpdate(this.filterNotDeleted(filterQuery), update, {
-        new: true,
-        ...options,
-      })
+      .findOneAndUpdate(
+        { ...filterQuery, ...this.getSoftDeleteFilter() },
+        update,
+        { new: true, ...options },
+      )
       .exec();
   }
 
-  // TODO: we should also ensure that unique uniqueness even after deleted
-  async deleteOne(filterQuery: Partial<TDocument>): Promise<void> {
-    const doc = await this.model
-      .findOne(this.filterNotDeleted(filterQuery))
-      .exec();
-    if (!doc) {
-      this.logger.warn(`Soft delete: Document not found or already deleted`);
-      return;
-    }
-
-    await this.model.updateOne({ _id: doc._id }, { status: 'deleted' }).exec();
-  }
-
-  async deleteMany(filterQuery: Partial<TDocument>): Promise<void> {
-    const docs = await this.model
-      .find(this.filterNotDeleted(filterQuery))
-      .exec();
-    const ids = docs.map((d) => d._id);
-    if (!ids.length) {
-      this.logger.warn(`Soft delete: No documents found or already deleted`);
-      return;
-    }
+  async softDelete(id: Types.ObjectId): Promise<void> {
+    const update: Record<string, unknown> = {
+      [this.statusField]: this.deletedStatusValue,
+      [this.deletedAtField]: new Date(),
+    };
 
     await this.model
-      .updateMany({ _id: { $in: ids } }, { status: 'deleted' })
+      .updateOne({ _id: id }, update as UpdateQuery<TDocument>)
+      .exec();
+  }
+
+  async deleteOne(filterQuery: FilterQuery<TDocument>): Promise<void> {
+    const update: Record<string, unknown> = {
+      [this.statusField]: this.deletedStatusValue,
+      [this.deletedAtField]: new Date(),
+    };
+
+    await this.model
+      .updateOne(
+        { ...filterQuery, ...this.getSoftDeleteFilter() },
+        update as UpdateQuery<TDocument>,
+      )
+      .exec();
+  }
+
+  async deleteMany(filterQuery: FilterQuery<TDocument>): Promise<void> {
+    const update: Record<string, unknown> = {
+      [this.statusField]: this.deletedStatusValue,
+      [this.deletedAtField]: new Date(),
+    };
+
+    await this.model
+      .updateMany(
+        { ...filterQuery, ...this.getSoftDeleteFilter() },
+        update as UpdateQuery<TDocument>,
+      )
       .exec();
   }
 

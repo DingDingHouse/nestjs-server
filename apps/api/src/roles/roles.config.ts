@@ -1,5 +1,4 @@
-import { ROLE_NAMES } from '@app/common/constants/roles';
-import { ROLE_STATUS } from '@app/common/constants/status';
+import { ROLE_NAMES, ROLE_STATUS } from '@app/common';
 
 export const DEFAULT_ROLES = [
   {
