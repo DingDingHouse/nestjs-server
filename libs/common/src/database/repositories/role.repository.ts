@@ -44,7 +44,7 @@ export class RoleRepository extends AbstractRepository<Role> {
       .map((id) => id.toString())
       .filter((id) => !existingIds.has(id));
     if (missing.length > 0) {
-      throw new Error(
+      throw new BadRequestException(
         `The following descendant roles do not exist: ${missing.join(', ')}`,
       );
     }
@@ -86,7 +86,9 @@ export class RoleRepository extends AbstractRepository<Role> {
     const hasDescendants =
       Array.isArray(update.descendants) && update.descendants.length > 0;
     if (isPlayer && hasDescendants) {
-      throw new Error('The "player" role cannot have any descendants.');
+      throw new BadRequestException(
+        'The "player" role cannot have any descendants.',
+      );
     }
     return super.findOneAndUpdate(filter, update, options);
   }

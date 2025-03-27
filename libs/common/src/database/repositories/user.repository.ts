@@ -7,6 +7,7 @@ import { Connection, Model } from 'mongoose';
 @Injectable()
 export class UserRepository extends AbstractRepository<UserDocument> {
   protected readonly logger = new Logger(UserRepository.name);
+  protected deletedStatusValue: string = 'DELETED';
 
   constructor(
     @InjectModel(UserDocument.name) userModel: Model<UserDocument>,
