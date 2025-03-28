@@ -18,38 +18,6 @@ export class RoleRepository extends AbstractRepository<Role> {
     super(roleModel, connection);
   }
 
-  async findByName(name: string): Promise<Role | null> {
-    return this.findOne({ name });
-  }
-
-  async findManyByIds(ids: Types.ObjectId[]): Promise<Role[]> {
-    return this.find({ _id: { $in: ids } });
-  }
-
-  async isRoleNameTaken(
-    name: string,
-    excludeId?: Types.ObjectId,
-  ): Promise<boolean> {
-    const existing = await this.model.findOne({
-      name,
-      status: { $ne: ROLE_STATUS.DELETED },
-    });
-    return existing ? !excludeId || !existing._id.equals(excludeId) : false;
-  }
-
-  async validateAllExist(ids: Types.ObjectId[]): Promise<void> {
-    const existing = await this.findManyByIds(ids);
-    const existingIds = new Set(existing.map((r) => r._id.toString()));
-    const missing = ids
-      .map((id) => id.toString())
-      .filter((id) => !existingIds.has(id));
-    if (missing.length > 0) {
-      throw new BadRequestException(
-        `The following descendant roles do not exist: ${missing.join(', ')}`,
-      );
-    }
-  }
-
   async create(
     document: Omit<Role, '_id'>,
     options?: SaveOptions,
@@ -62,35 +30,37 @@ export class RoleRepository extends AbstractRepository<Role> {
     }
 
     const role = await super.create(document, options);
-    if (role.name === ROLE_NAMES.ROOT) return role;
 
-    const rootRole = await this.model.findOne({ name: ROLE_NAMES.ROOT });
-    if (!rootRole) return role;
-
-    const alreadyAdded = rootRole.descendants.some((id) => id.equals(role._id));
-    if (!alreadyAdded) {
-      rootRole.descendants.push(role._id);
-      await rootRole.save();
-      this.logger.log(`Added role "${role.name}" to root's descendants`);
+    // Automatically add to ROOT descendants
+    if (role.name !== ROLE_NAMES.ROOT) {
+      const rootRole = await this.model.findOne({ name: ROLE_NAMES.ROOT });
+      if (rootRole && !rootRole.descendants.some((id) => id.equals(role._id))) {
+        rootRole.descendants.push(role._id);
+        await rootRole.save();
+        this.logger.log(`Added "${role.name}" as descendant to ROOT`);
+      }
     }
 
     return role;
   }
 
-  async findOneAndUpdate(
-    filter: FilterQuery<Role>,
-    update: Partial<Role>,
-    options?: SaveOptions,
-  ): Promise<Role | null> {
-    const isPlayer = update.name === ROLE_NAMES.PLAYER;
-    const hasDescendants =
-      Array.isArray(update.descendants) && update.descendants.length > 0;
-    if (isPlayer && hasDescendants) {
-      throw new BadRequestException(
-        'The "player" role cannot have any descendants.',
-      );
+  async validateAllExist(ids: Types.ObjectId[]): Promise<void> {
+    const found = await this.find({ _id: { $in: ids } });
+    const foundIds = new Set(found.map((r) => r._id.toString()));
+    const missing = ids
+      .map((id) => id.toString())
+      .filter((id) => !foundIds.has(id));
+    if (missing.length > 0) {
+      throw new BadRequestException(`Missing role IDs: ${missing.join(', ')}`);
     }
-    return super.findOneAndUpdate(filter, update, options);
+  }
+
+  async isRoleNameTaken(
+    name: string,
+    excludeId?: Types.ObjectId,
+  ): Promise<boolean> {
+    const existing = await this.model.findOne({ name });
+    return !!existing && (!excludeId || !existing._id.equals(excludeId));
   }
 
   async deleteOne(filter: FilterQuery<Role>): Promise<void> {
@@ -98,6 +68,7 @@ export class RoleRepository extends AbstractRepository<Role> {
       ...filter,
       status: { $ne: ROLE_STATUS.DELETED },
     });
+
     if (!role) return;
 
     if (role.name === ROLE_NAMES.ROOT || role.name === ROLE_NAMES.PLAYER) {
@@ -106,7 +77,7 @@ export class RoleRepository extends AbstractRepository<Role> {
       );
     }
 
-    const renamed = `${role.name}__deleted__${new Date().toISOString()}`;
+    const renamed = `${role.name}__deleted__${Date.now()}`;
     await this.model.updateOne(
       { _id: role._id },
       {

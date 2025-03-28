@@ -1,5 +1,4 @@
 import { User, UserRepository } from '@app/common';
-import { Lean } from '@app/common/types/lean-document';
 import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
@@ -8,7 +7,7 @@ export class UsersService {
 
   constructor(private readonly userRepo: UserRepository) {}
 
-  async findOne(username: string): Promise<Lean<User> | null> {
+  async findOne(username: string): Promise<User | null> {
     return this.userRepo.findOne({ username });
   }
 }

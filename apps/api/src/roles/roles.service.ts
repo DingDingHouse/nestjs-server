@@ -10,7 +10,6 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { DescendantsOperation, UpdateRoleDto } from './dto/update-role.dto';
 import { FindAllRolesDto } from './dto/find-all-role.dto';
 import { PaginatedResult } from '@app/common/dto/pagination-result.dto';
-import { Lean } from '@app/common/types/lean-document';
 
 @Injectable()
 export class RolesService {
@@ -19,29 +18,31 @@ export class RolesService {
   constructor(private readonly roleRepo: RoleRepository) {}
 
   async create(dto: CreateRoleDto) {
-    const isTaken = await this.roleRepo.isRoleNameTaken(dto.name);
+    const name = dto.name.trim();
+    const isTaken = await this.roleRepo.isRoleNameTaken(name);
     if (isTaken) {
-      throw new BadRequestException(
-        `Role with name "${dto.name}" already exists.`,
-      );
+      throw new BadRequestException(`Role "${name}" already exists.`);
     }
 
+    const descendants = (dto.descendants ?? []).map(
+      (id) => new Types.ObjectId(id),
+    );
     return this.roleRepo.create({
-      name: dto.name,
+      name,
       status: dto.status ?? ROLE_STATUS.ACTIVE,
-      descendants: (dto.descendants ?? []).map((id) => new Types.ObjectId(id)),
+      descendants,
     });
   }
 
-  async findOne(id: Types.ObjectId) {
+  async findOne(id: Types.ObjectId): Promise<Role> {
     const role = await this.roleRepo.findById(id);
     if (!role) {
-      throw new NotFoundException(`Role with id "${id.toString()}" not found`);
+      throw new NotFoundException(`Role with ID "${id.toString()}" not found.`);
     }
     return role;
   }
 
-  async findAll(params: FindAllRolesDto): Promise<PaginatedResult<Lean<Role>>> {
+  async findAll(params: FindAllRolesDto): Promise<PaginatedResult<Role>> {
     const {
       name,
       status,
@@ -52,7 +53,6 @@ export class RolesService {
     } = params;
 
     const filter: Record<string, any> = {};
-
     if (name) filter.name = new RegExp(name, 'i');
     if (status) filter.status = status;
 
@@ -60,56 +60,45 @@ export class RolesService {
       [sortBy]: sortOrder === 'asc' ? 1 : -1,
     };
 
-    return this.roleRepo.findAdvanced({
-      filter,
-      page,
-      limit,
-      sort,
-    });
+    return this.roleRepo.findAdvanced({ filter, page, limit, sort });
   }
 
   async update(id: Types.ObjectId, dto: UpdateRoleDto) {
     const role = await this.findOne(id);
-    const trimmedName = dto.name?.trim();
-    const newName = trimmedName ?? role.name;
+
+    const name = dto.name?.trim() ?? role.name;
 
     const protectedNames: string[] = [ROLE_NAMES.ROOT, ROLE_NAMES.PLAYER];
     const isProtected = protectedNames.includes(role.name);
 
-    if (trimmedName && isProtected && trimmedName !== role.name) {
+    if (dto.name && isProtected && dto.name !== role.name) {
       throw new BadRequestException(
-        `The "${role.name}" role name is protected and cannot be changed.`,
+        `"${role.name}" role name cannot be changed.`,
       );
     }
 
-    if (trimmedName) {
-      const isTaken = await this.roleRepo.isRoleNameTaken(trimmedName, id);
+    if (dto.name) {
+      const isTaken = await this.roleRepo.isRoleNameTaken(name, id);
       if (isTaken) {
-        throw new BadRequestException(
-          `Role with name "${trimmedName}" already exists.`,
-        );
+        throw new BadRequestException(`Role "${name}" already exists.`);
       }
     }
 
-    if (newName === ROLE_NAMES.PLAYER && dto.descendants !== undefined) {
-      throw new BadRequestException(
-        `The "player" role cannot have any descendants.`,
-      );
+    if (name === ROLE_NAMES.PLAYER && dto.descendants) {
+      throw new BadRequestException(`"Player" role cannot have descendants.`);
     }
 
     let updatedDescendants: Types.ObjectId[] | undefined;
 
     if (dto.descendants) {
-      const descendantIds = dto.descendants.map((d) => new Types.ObjectId(d));
-      if (descendantIds.some((descId) => descId.equals(id))) {
-        throw new BadRequestException(
-          `A role cannot be a descendant of itself.`,
-        );
+      const descIds = dto.descendants.map((d) => new Types.ObjectId(d));
+      if (descIds.some((desc) => desc.equals(id))) {
+        throw new BadRequestException(`A role cannot be its own descendant.`);
       }
-      await this.roleRepo.validateAllExist(descendantIds);
+      await this.roleRepo.validateAllExist(descIds);
 
       const current = role.descendants.map((id) => id.toString());
-      const incoming = descendantIds.map((id) => id.toString());
+      const incoming = descIds.map((id) => id.toString());
 
       switch (dto.operation) {
         case DescendantsOperation.ADD:
@@ -122,16 +111,14 @@ export class RolesService {
             .filter((id) => !incoming.includes(id))
             .map((id) => new Types.ObjectId(id));
           break;
-        case DescendantsOperation.REPLACE:
-        case undefined:
-          updatedDescendants = descendantIds;
-          break;
+        default:
+          updatedDescendants = descIds;
       }
     }
 
     return this.roleRepo.findOneAndUpdate(
       { _id: id },
-      { ...dto, name: newName, descendants: updatedDescendants },
+      { ...dto, name, descendants: updatedDescendants },
     );
   }
 

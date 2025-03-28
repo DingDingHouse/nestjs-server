@@ -3,7 +3,6 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-local';
 import { AuthService } from './auth.service';
 import { User } from '@app/common';
-import { Lean } from '@app/common/types/lean-document';
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
@@ -14,7 +13,7 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   async validate(
     username: string,
     password: string,
-  ): Promise<Omit<Lean<User>, 'password'>> {
+  ): Promise<Omit<User, 'password'>> {
     const user = await this.authService.validateUser(username, password);
     if (!user) throw new UnauthorizedException('Invalid credentials');
     return user;
