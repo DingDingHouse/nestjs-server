@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -14,7 +15,9 @@ import { UpdateRoleDto } from './dto/update-role.dto';
 import { FindAllRolesDto } from './dto/find-all-role.dto';
 import { ParseObjectIdPipe } from '@app/common';
 import { Types } from 'mongoose';
+import { JwtAuthGuard } from '../auth/jwt.auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('roles')
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
