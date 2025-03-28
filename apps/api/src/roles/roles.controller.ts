@@ -11,7 +11,7 @@ import {
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
-import { FindAllRolesDto } from './dto/find-all-roles.dto';
+import { FindAllRolesDto } from './dto/find-all-role.dto';
 import { ParseObjectIdPipe } from '@app/common';
 import { Types } from 'mongoose';
 

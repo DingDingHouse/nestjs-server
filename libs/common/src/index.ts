@@ -14,16 +14,38 @@ export * from './pipes/parse-object-id.pipe';
 // ├── libs/
 // │   └── common/
 // │       ├── src/
+// │       │   ├── constants/
+// │       │   │   ├── roles.ts
+// │       │   │   ├── status.ts
 // │       │   ├── database/
+// │       │   │   ├── repositories/
+// │       │   │   │   ├── role.repository.ts
+// │       │   │   ├── schemas/
+// │       │   │   │   ├── role.schema.ts
 // │       │   │   ├── database.module.ts
 // │       │   │   ├── abstract.repository.ts
 // │       │   │   ├── abstract.schema.ts
+// │       │   ├── dto/
+// │       │   │   ├── pagination-result.dto.ts
+// │       │   ├── pipes/
+// │       │   │   ├── parse-object-id.pipe.ts
+// │       │   ├── types/
+// │       │   │   ├── lean-document.ts
 // │       │   ├── index.ts
 // │       ├── tsconfig.json
 // │       └── package.json
 // ├── apps/
 // │   └── api/
 // │   |   ├── src/
+// │   |   │   ├── roles/
+// │   |   │   │   ├──dto/
+// │   |   │   │   │   ├── create-role.dto.ts
+// │   |   │   │   │   ├── update-role.dto.ts
+// │   |   │   │   │   ├── find-all-role.dto.ts
+// │   |   │   │   ├── roles.config.ts
+// │   |   │   │   ├── roles.module.ts
+// │   |   │   │   ├── roles.service.ts
+// │   |   │   │   └── roles.controller.ts
 // │   |   │   ├── users/
 // │   |   │   │   ├── users.module.ts
 // │   |   │   │   ├── users.service.ts
