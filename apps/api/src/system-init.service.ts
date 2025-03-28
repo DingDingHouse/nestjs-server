@@ -4,11 +4,12 @@ import {
   USER_STATUS,
   UserRepository,
 } from '@app/common';
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { DEFAULT_ROLES } from './roles/roles.config';
 import * as bcrypt from 'bcrypt';
 
+@Injectable()
 export class SystemInitService {
   private readonly logger = new Logger(SystemInitService.name);
 
